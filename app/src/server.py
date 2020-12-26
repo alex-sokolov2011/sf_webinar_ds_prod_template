@@ -1,5 +1,8 @@
 # Скрипт flask сервера для предикта
 from flask import Flask, request, jsonify
+import pickle
+import pandas
+import sklearn
 
 app = Flask(__name__)
 
@@ -22,7 +25,10 @@ app = Flask(__name__)
 #
 # url = http://localhost:8000/hello?param=python
 # response = {'param': 'python', 'result': 'SERVER OK'}
-
+@app.route('/hello', methods=['GET'])
+def hello_check():
+    param = request.args.get('param')
+    return jsonify({'result': 'SERVER OK', 'param': param}), 200
 
 MODEL_FILE = '_webinar_model.pkl'
 FEATURE_ORDER_FILE = '_feature_order.pkl'
@@ -35,11 +41,23 @@ TEST_DATA_FILE = '_test_data.pkl'
 
 
 # ******** НИЖЕ НАПИШИТЕ КОД ЗАГРУЗКИ ТРЕХ СЕРИАЛИЗОВАННЫХ ОБЪЕКТОВ
-# ........
+with open(MODEL_FILE, 'rb') as p_model:
+    model = pickle.load(p_model)
+
+with open(FEATURE_ORDER_FILE, 'rb') as p_feature:
+    feature = pickle.load(p_feature)
+
+with open(TEST_DATA_FILE, 'rb') as p_test:
+    test = pickle.load(p_test)
+
+
+# print(model)
+# print(test)
+# print(feature)
 
 
 # ******** НИЖЕ НАПИШИТЕ КОД FLASK МЕТОДА ДЛЯ ПРОВЕРКИ РАБОТЫ СЕРВЕРА
-# ........
+# ЧТО ТУТ ПИСАТЬ НЕ ЗНАЮ???
 
 
 # Flask Метод для предикта обученной моделью, требования:
@@ -79,7 +97,28 @@ TEST_DATA_FILE = '_test_data.pkl'
 
 
 # ******** НИЖЕ НАПИШИТЕ КОД FLASK МЕТОДА ДЛЯ ПРЕДИКТА ОБУЧЕННОЙ МОДЕЛЬЮ
-# ........
+@app.route('/predict', methods=['GET'])
+def predict():
+    obj_id = request.args.get('obj_id')
+
+    try:
+        int(obj_id)
+    except Exception:
+        prediction = -1
+        response_status = 'ERROR'
+    else:
+        if int(obj_id) in test.obj_id:
+            print(obj_id)
+            temp_test = test[test.obj_id==int(obj_id)]
+            prediction = model.predict(temp_test.drop(columns=['obj_id']))[0]
+            response_status = 'OK'
+        else:
+            prediction = -1
+            response_status = 'ERROR'
+    return jsonify({'prediction': round(prediction, 4),
+                    'obj_id': obj_id,
+                    'response_status': response_status})
+
 
 
 if __name__ == '__main__':
